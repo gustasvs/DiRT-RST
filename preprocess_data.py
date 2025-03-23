@@ -111,6 +111,9 @@ def get_dataloader():
 
     assert len(all_data) > 0, "No data collected, please run `create_data.py` to collect data"
 
+    if MAX_DATA_SAMPLES:
+        all_data = all_data[:MAX_DATA_SAMPLES]
+
     df = pd.DataFrame(all_data)
     print(Counter(df[1].apply(str)))
     print(f'total data  --> {len(all_data)}')

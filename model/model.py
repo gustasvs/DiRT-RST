@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.optim import Adam
 
-from torchvision.models import resnet50, ResNet50_Weights, resnet18
+from torchvision.models import resnet50, ResNet50_Weights, resnet18, resnet34, efficientnet_b1, efficientnet_b3, efficientnet_v2_s, efficientnet_v2_m
 from torchvision.transforms import Compose, ToTensor, Normalize
 from torchvision.models.video.s3d import S3D
 from torchvision.models.video.resnet import mc3_18, r3d_18
@@ -14,16 +14,18 @@ from functions.settings import *
 class VideoModel(nn.Module):
     def __init__(self):
         super(VideoModel, self).__init__()
-        # self.s3d = r3d_18(num_classes=TARGET_CLASS_COUNT)
-        # if GRAYSCALE:
-        #     self.s3d.stem[0] = nn.Conv3d(1, 64, kernel_size=(1, 7, 7), stride=(1, 2, 2), padding=(0, 3, 3), bias=False)
-
-         # Feature extractor: use pretrained ResNet18, remove final fc layer
-        resnet = resnet18()
+        # resnet = resnet18()
+        efficientnet = efficientnet_v2_s()
+        # print(resnet)
         if GRAYSCALE:
-            resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1])
-        self.feature_dim = resnet.fc.in_features  # typically 512
+            # resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            efficientnet.features[0][0] = nn.Conv2d(1, 24, kernel_size=3, stride=2, padding=1, bias=False)
+        # self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1])
+        # self.feature_dim = resnet.fc.in_features  # typically 512
+        self.feature_extractor = nn.Sequential(*list(efficientnet.children())[:-1])
+        self.feature_dim = efficientnet.classifier[1].in_features
+
+        print(self.feature_dim)
         
         # LSTM to process sequential features from each frame
         self.lstm = nn.LSTM(input_size=self.feature_dim, hidden_size=256, 

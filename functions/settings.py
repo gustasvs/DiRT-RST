@@ -7,8 +7,10 @@ SOURCE_WIDTH = 1366
 SOURCE_HEIGHT = 768
 
 # the input to the model will be resized to this
-# MODEL_INPUT_WIDTH = 683
-# MODEL_INPUT_HEIGHT = 384
+# factor of 4 (TODO: test this with efficientnet_b4) as its original input size is 380x380
+# MODEL_INPUT_WIDTH = 341
+# MODEL_INPUT_HEIGHT = 192
+# factor of 6
 MODEL_INPUT_WIDTH = 227
 MODEL_INPUT_HEIGHT = 128
 
@@ -32,8 +34,8 @@ TEMPORAL_FRAME_GAP = 6
 # TRAINING SETTINGS
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 EPOCHS = 10
-BATCH_SIZE = 8
-BATCHES_TO_AGGREGATE = 16
+BATCH_SIZE = 4
+BATCHES_TO_AGGREGATE = 32
 LEARNING_RATE = 0.001
 
 
@@ -46,3 +48,9 @@ assert TEMPORAL_FRAME_WINDOW > 0, "TEMPORAL_FRAME_WINDOW must be greater than 0"
 assert BATCH_SIZE > 0, "BATCH_SIZE must be greater than 0"
 assert LEARNING_RATE > 0, "LEARNING_RATE must be greater than 0"
 assert EPOCHS > 0, "EPOCHS must be greater than 0"
+
+# development settings
+
+# set to None to use all data, useful for debugging
+# MAX_DATA_SAMPLES = 1000
+MAX_DATA_SAMPLES = None
