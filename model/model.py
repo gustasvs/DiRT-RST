@@ -3,15 +3,56 @@ from torch import nn
 from torch.nn import functional as F
 from torch.optim import Adam
 
-from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import resnet50, ResNet50_Weights, resnet18
 from torchvision.transforms import Compose, ToTensor, Normalize
+from torchvision.models.video.s3d import S3D
+from torchvision.models.video.resnet import mc3_18, r3d_18
 
 from functions.settings import *
+
+
+class VideoModel(nn.Module):
+    def __init__(self):
+        super(VideoModel, self).__init__()
+        # self.s3d = r3d_18(num_classes=TARGET_CLASS_COUNT)
+        # if GRAYSCALE:
+        #     self.s3d.stem[0] = nn.Conv3d(1, 64, kernel_size=(1, 7, 7), stride=(1, 2, 2), padding=(0, 3, 3), bias=False)
+
+         # Feature extractor: use pretrained ResNet18, remove final fc layer
+        resnet = resnet18()
+        if GRAYSCALE:
+            resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1])
+        self.feature_dim = resnet.fc.in_features  # typically 512
+        
+        # LSTM to process sequential features from each frame
+        self.lstm = nn.LSTM(input_size=self.feature_dim, hidden_size=256, 
+                            num_layers=3, batch_first=True)
+        
+        # Final classifier layer
+        self.classifier = nn.Linear(256, TARGET_CLASS_COUNT)
+
+
+    def forward(self, x):
+        # x shape: (batch_size, num_frames, C, H, W)
+        batch_size, num_frames, C, H, W = x.size()
+        
+        # Reshape to (batch_size*num_frames, C, H, W) for CNN processing
+        x = x.view(batch_size * num_frames, C, H, W)
+        features = self.feature_extractor(x)  # output shape: (batch_size*num_frames, feature_dim, 1, 1)
+        features = features.view(batch_size, num_frames, self.feature_dim)
+        
+        # Process the sequence of features with LSTM
+        lstm_out, _ = self.lstm(features)  # lstm_out shape: (batch_size, num_frames, hidden_dim)
+        
+        # Use the output from the final time step for classification
+        out = self.classifier(lstm_out[:, -1, :])
+        return out
 
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        resnet = resnet50()
+        resnet = resnet18()
         if GRAYSCALE:
             resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         resnet.fc = nn.Sequential(
@@ -43,24 +84,33 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, num_frames=TEMPORAL_FRAME_WINDOW, num_classes=TARGET_CLASS_COUNT, d_model=2048, nhead=8, num_encoder_layers=6, dropout=0.1):
+    def __init__(self, num_frames=TEMPORAL_FRAME_WINDOW, d_model=256, nhead=8, num_encoder_layers=6, dropout=0.1):
         super().__init__()
-        self.resnet = resnet50()
+        self.resnet = resnet18()
         # Remove final classification layer to extract features
+        if GRAYSCALE:
+            self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+
         self.resnet.fc = nn.Identity()
+        
+        self.feature_proj = nn.Linear(512, d_model)
+        self.norm = nn.LayerNorm(d_model)
         
         self.pos_encoder = PositionalEncoding(d_model, max_len=num_frames)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
-        self.fc = nn.Linear(d_model, num_classes)
+        self.fc = nn.Linear(d_model, TARGET_CLASS_COUNT)
+        self.d_model = d_model
         
     def forward(self, x):
         # x shape: (batch_size, num_frames, channels, height, width)
         batch_size, num_frames, channels, height, width = x.shape
         x = x.view(batch_size * num_frames, channels, height, width)
-        features = self.resnet(x)  # shape: (batch_size * num_frames, d_model)
-        features = features.view(batch_size, num_frames, -1)  # shape: (batch_size, num_frames, d_model)
-        
+        features = self.resnet(x)  # shape: (batch_size * num_frames, 2048)
+        features = features.view(batch_size, num_frames, -1)  # shape: (batch_size, num_frames, 2048)
+        features = self.feature_proj(features) # shape: (batch_size, num_frames, d_model)
+        features = self.norm(features)
+
         # Add positional encoding
         features = self.pos_encoder(features)
         # Transformer expects (seq_len, batch_size, d_model)

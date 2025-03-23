@@ -3,12 +3,14 @@ import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from model.model import Model
+from model.model import Model, TransformerModel, VideoModel
 from functions.settings import *
 
 from preprocess_data import get_dataloader
 
-model = Model()
+# model = Model()
+# model = TransformerModel(d_model=512, nhead=4, num_encoder_layers=4)
+model = VideoModel()
 model.to(DEVICE)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -35,19 +37,30 @@ model.eval()
 # sanity check (log first sample)
 # fig = plt.figure(figsize=(20, 10))
 # for i, (input, target) in enumerate(training_loader):
-#     output = model(input)
-#     if (i > 4):
+#     output = model(input.to(DEVICE))
+#     if (i > 5):
 #         break
 #     ax = fig.add_subplot(2, 3, i + 1)
-#     ax.imshow(input[0].cpu().detach().numpy().transpose(1, 2, 0))
+#     if TEMPORAL_FRAME_WINDOW == 1:
+#         ax.imshow(input[0].cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
+#     else:
+#         ax.imshow(input[0][TEMPORAL_FRAME_WINDOW - 1].cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
 #     out = output[0].cpu().detach().numpy()
+#     out = torch.softmax(torch.tensor(out), dim=0)
 #     outstr = "["
 #     for i in range(len(out)):
 #         outstr += f"{out[i]:.2f}"
 #         if i < len(out) - 1:
 #             outstr += ", "
 #     outstr += "]"
-#     ax.set_title(f"{target[0]}\n {outstr}")
+#     target = target[0].cpu().detach().numpy()
+#     targetstr = "["
+#     for i in range(len(target)):
+#         targetstr += f"{target[i]:.2f}"
+#         if i < len(target) - 1:
+#             targetstr += ", "
+#     targetstr += "]"
+#     ax.set_title(f"{targetstr}\n {outstr}")
 #     ax.axis('off')
 #     ax.set_autoscale_on(True)
 # plt.show()
@@ -60,14 +73,17 @@ import cv2
 def train_one_epoch(epoch_index, losses):
     running_loss = 1e-5
 
+    optimizer.zero_grad()
+    model.train()  # set model to training mode
+
     pbar = tqdm(training_loader, desc=f"Epoch {epoch_index + 1}/{EPOCHS}")
-    for i, data in enumerate(pbar):
+    for mini_batch_idx, data in enumerate(pbar):
         inputs, labels = data
 
         # Zero your gradients for every batch!
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         # Make predictions for this batch
-        outputs = model(inputs)
+        outputs = model(inputs.to(DEVICE))
 
         # sanity check first sample
         # print(f" outputs: {torch.sigmoid(outputs[0]).cpu().detach().numpy()}")
@@ -80,13 +96,16 @@ def train_one_epoch(epoch_index, losses):
 
         loss = loss_fn(outputs, labels)
         loss.backward()
-        # Adjust learning weights
-        optimizer.step()
-        # Gather data and report
+
+
+        if (mini_batch_idx + 1) % BATCHES_TO_AGGREGATE == 0 or mini_batch_idx == len(training_loader) - 1:
+            optimizer.step()
+            optimizer.zero_grad()
+
 
         running_loss += loss.item()
 
-        pbar.set_postfix(epoch_loss = running_loss / (i + 1))
+        pbar.set_postfix(epoch_loss = running_loss / (mini_batch_idx + 1), gpu_memory=torch.cuda.memory_allocated(0) / 1e9)
         losses.append(min(loss.item(), 2)) # no need to plot outliers
 
 if __name__ == "__main__":

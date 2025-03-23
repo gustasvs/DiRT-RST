@@ -25,6 +25,7 @@ def prepare_image(image):
         else:
             return Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(img)
 
+    image = cv2.resize(image, (MODEL_INPUT_WIDTH, MODEL_INPUT_HEIGHT))
     torch_transform = Compose([
         # converts a PIL Image or numpy.ndarray (H x W x C) in the range [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]
         ToTensor(),
@@ -47,18 +48,44 @@ class CustomDataset(Dataset):
 
     def prepare_data(self):
         for idx in range(len(self.data)):
+            if idx < TEMPORAL_FRAME_WINDOW * TEMPORAL_FRAME_GAP and TEMPORAL_FRAME_WINDOW > 1:
+                continue
             self.prepared_data.append(self.prepare_item(idx))
 
     def prepare_item(self, idx):
         input = self.data[idx][0]
 
+        if TEMPORAL_FRAME_WINDOW > 1:
+            input = []
+            for i in range(0, TEMPORAL_FRAME_WINDOW * TEMPORAL_FRAME_GAP, TEMPORAL_FRAME_GAP):
+                input.append(self.data[idx - ((TEMPORAL_FRAME_WINDOW * TEMPORAL_FRAME_GAP) - 1) + i][0])
+
+        # from matplotlib import pyplot as plt
+        # fig = plt.figure(figsize=(20, 10))
+        # for i, frame in enumerate(input):
+        #     ax = fig.add_subplot(1, min(len(input), 3), i % 3 + 1)
+        #     ax.imshow(prepare_image(frame).cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
+        #     ax.set_title(f"{i}")
+        #     ax.axis('off')
+        #     ax.set_autoscale_on(True)
+        #     if (i + 1) % 3 == 0 and i != len(input) - 1:
+        #         fig = plt.figure(figsize=(20, 10))
+        # ax = fig.add_subplot(1, min(len(input), 3), (len(input) % 3) + 1)
+        # ax.imshow(prepare_image(self.data[idx][0]).cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
+        # ax.set_title(f"ACTUAL")
+        # ax.axis('off')
+        # plt.show()
+
         target = self.data[idx][1]
         target = torch.tensor(target, dtype=torch.float32, device=DEVICE)
 
         if TEMPORAL_FRAME_WINDOW == 1:
-            input = prepare_image(input).to(DEVICE)
+            input = prepare_image(input).to("cpu")
         else:
-            input = torch.stack([prepare_image(frame).to(DEVICE) for frame in input], dim=0)
+            input = torch.stack([prepare_image(frame).to("cpu") for frame in input], dim=0)
+            # current shape is (num_frames, C, H, W)
+            # we need to transpose it to (C, num_frames, H, W)
+            # input = input.permute(1, 0, 2, 3)
 
         # cv2.imshow(f'targets: {target}', cv2.resize(input.cpu().detach().numpy().transpose(1, 2, 0), (700, 700)))
         # cv2.waitKey(0)
@@ -116,13 +143,14 @@ def get_dataloader():
     return dataloader, pos_weight
 
 if __name__ == "__main__":
-    example_dataloader = get_dataloader(file_name, 32)
+    example_dataloader = get_dataloader()
     # log first sample in first batch
-    for i, (inputs, targets) in enumerate(example_dataloader):
+    for i, batch in enumerate(example_dataloader):
+        inputs, targets, *_ = batch
 
-        print("inputs shape: ", inputs.shape)
-
-        cv2.imshow(f'targets: {targets[0]}', inputs[0].numpy())
+        img = inputs[0].cpu().detach().numpy()
+        img = img.squeeze(0)
+        cv2.imshow(f'targets: {targets[0]}', img)
         print(targets[0])
         cv2.waitKey(0)
         cv2.destroyAllWindows()

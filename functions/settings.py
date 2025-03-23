@@ -1,16 +1,20 @@
 import torch
 
 # game should be in this width at the top left corner of the screen
-SOURCE_WIDTH = 1024
+# SOURCE_WIDTH = 1024
+# SOURCE_HEIGHT = 768
+SOURCE_WIDTH = 1366
 SOURCE_HEIGHT = 768
 
 # the input to the model will be resized to this
-MODEL_INPUT_WIDTH = 256
-MODEL_INPUT_HEIGHT = 256
+# MODEL_INPUT_WIDTH = 683
+# MODEL_INPUT_HEIGHT = 384
+MODEL_INPUT_WIDTH = 227
+MODEL_INPUT_HEIGHT = 128
 
 TARGET_CLASS_COUNT = 7
-# file_name = 'RALLYCROSS_hellnorway' #bigger_model
-file_name = 'wales_bronfelen' #smaller_model
+
+file_name = 'greece_tsiristra_thea'
 t1 = 'sweden_hamra'
 t2 = 'wales_bronfelen'
 t3 = 'finland_kakaristo'
@@ -21,12 +25,15 @@ SAMPLES_IN_ONE_FILE = 2000
 
 GRAYSCALE = True
 # uses transformer based spatiotemporal model if over 1
-TEMPORAL_FRAME_WINDOW = 1
+TEMPORAL_FRAME_WINDOW = 6
+# use to make model `see` deeper into the past by skipping frames
+TEMPORAL_FRAME_GAP = 6
 
 # TRAINING SETTINGS
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 EPOCHS = 10
-BATCH_SIZE = 64
+BATCH_SIZE = 8
+BATCHES_TO_AGGREGATE = 16
 LEARNING_RATE = 0.001
 
 

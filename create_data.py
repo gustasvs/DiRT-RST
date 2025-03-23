@@ -55,6 +55,33 @@ def countdown(seconds=3):
         time.sleep(1)
     print()
 
+def undo_frames(training_data, file_index, frame_count, pbar):
+    frames_to_remove = frame_count
+    for _ in range(frame_count):
+        if (len(training_data) == 0):
+            break
+        training_data.pop()
+        frames_to_remove -= 1
+        pbar.update(-1)
+    
+    if (frames_to_remove and file_index > 0):
+        print("Also removing frames from the previous file")
+        # have to remove also from the previous file
+        training_data = []
+        previous_file_path = f'{DATA_PATH}_{file_index - 1}.npy'
+        if os.path.isfile(previous_file_path):
+            previous_file_data = list(np.load(previous_file_path, allow_pickle=True))
+            for i in range(len(previous_file_data) - frames_to_remove):
+                previous_file_data.pop()
+            
+            np.save(previous_file_path, previous_file_data)
+            print(f'Frames removed from {previous_file_path}')
+        else:
+            print(f'File {previous_file_path} not found')
+
+    return training_data
+
+
 
 def main():
     file_index = get_next_file_index()
@@ -68,8 +95,6 @@ def main():
     last_time = time.time() 
     pbar = tqdm(total=SAMPLES_IN_ONE_FILE)
 
-    temporal_frames = []
-
     while True:
         keys = key_check()
 
@@ -82,15 +107,8 @@ def main():
                 screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
             output = keys_to_output(keys)
-            if TEMPORAL_FRAME_WINDOW == 1:
-                training_data.append([screen, output])
-            else:
-                temporal_frames.append(screen)
-                if (len(temporal_frames) < TEMPORAL_FRAME_WINDOW):
-                    continue
-                if (len(temporal_frames) > TEMPORAL_FRAME_WINDOW):
-                    temporal_frames.pop(0)
-                    training_data.append([temporal_frames, output])
+
+            training_data.append([screen, output])
 
             # some code to keep track of the progress
             pbar.update(1)
@@ -105,19 +123,18 @@ def main():
                 save_data(training_data, file_index)
                 file_index += 1
                 training_data = []
-                temporal_frames = []
                 pbar.reset()
 
         # handle pausing
         if 'T' in keys and not paused:
             paused = True
-            temporal_frames = []
             print(' PAUSED', end=' | ')
         if 'Y' in keys and paused:
             paused = False
-            temporal_frames = []
             print('RESUMED', end=' ')
             countdown()
+        if 'R' in keys:
+            training_data = undo_frames(training_data, file_index, 200, pbar)
 
 if __name__ == "__main__":
     main()
