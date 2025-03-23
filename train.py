@@ -35,36 +35,63 @@ else:
 model.eval()
 
 # sanity check (log first sample)
-# fig = plt.figure(figsize=(20, 10))
-# for i, (input, target) in enumerate(training_loader):
-#     output = model(input.to(DEVICE))
-#     if (i > 5):
-#         break
-#     ax = fig.add_subplot(2, 3, i + 1)
-#     if TEMPORAL_FRAME_WINDOW == 1:
-#         ax.imshow(input[0].cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
-#     else:
-#         ax.imshow(input[0][TEMPORAL_FRAME_WINDOW - 1].cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
-#     out = output[0].cpu().detach().numpy()
-#     out = torch.softmax(torch.tensor(out), dim=0)
-#     outstr = "["
-#     for i in range(len(out)):
-#         outstr += f"{out[i]:.2f}"
-#         if i < len(out) - 1:
-#             outstr += ", "
-#     outstr += "]"
-#     target = target[0].cpu().detach().numpy()
-#     targetstr = "["
-#     for i in range(len(target)):
-#         targetstr += f"{target[i]:.2f}"
-#         if i < len(target) - 1:
-#             targetstr += ", "
-#     targetstr += "]"
-#     ax.set_title(f"{targetstr}\n {outstr}")
-#     ax.axis('off')
-#     ax.set_autoscale_on(True)
-# plt.show()
-# exit(0)
+if TEMPORAL_FRAME_WINDOW == 1:
+    fig = plt.figure(figsize=(20, 10))
+for i, (input, target) in enumerate(training_loader):
+    if TEMPORAL_FRAME_WINDOW > 1:
+        fig = plt.figure(figsize=(20, 10), tight_layout=True)
+        manager = plt.get_current_fig_manager()
+        manager.window.wm_geometry("+0+0")
+        # position
+    output = model(input.to(DEVICE))
+    
+    out = output[0].cpu().detach().numpy()
+    out = torch.softmax(torch.tensor(out), dim=0)
+    outstr = "["
+    for i in range(len(out)):
+        outstr += f"{out[i]:.2f}"
+        if i < len(out) - 1:
+            outstr += ", "
+    outstr += "]"
+    target = target[0]
+    targetstr = "["
+    for i in range(len(target)):
+        targetstr += f"{target[i]:.2f}"
+        if i < len(target) - 1:
+            targetstr += ", "
+    targetstr += "]"
+    keymapstr = "[  W  ,  A  ,  D  ,  S  , WA  , WD  , NK  ]"
+    
+    if (i > 30):
+        break
+    if TEMPORAL_FRAME_WINDOW == 1:
+        ax = fig.add_subplot(2, 3, i + 1)
+        ax.imshow(input[0].cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
+    else:
+        ax = fig.add_subplot(1, 1, 1)  # Single axis for video animation
+        num_cycles = 5  # Number of times to loop through the frames
+        for cycle in range(num_cycles):
+            for j in range(TEMPORAL_FRAME_WINDOW):
+                ax.imshow(input[0][j].cpu().detach().numpy().transpose(1, 2, 0), cmap='gray')
+                ax.autoscale(False)
+                ax.axis('off')
+                ax.set_title(f"{keymapstr}\n{targetstr}\n {outstr}")
+
+                plt.pause(0.2)  # Delay to simulate 5fps video playback
+                if j < TEMPORAL_FRAME_WINDOW - 1:
+                    ax.cla()  # Clear the axis for the next frame
+
+
+    
+    # ax.set_title(f"{targetstr}\n {outstr}")
+    # fig.suptitle(f"{keymapstr}\n{targetstr}\n {outstr}")
+
+    if TEMPORAL_FRAME_WINDOW > 1:
+        plt.show()
+        plt.close(fig)
+if TEMPORAL_FRAME_WINDOW == 1:
+    plt.show()
+exit(0)
 
 losses = []
 
