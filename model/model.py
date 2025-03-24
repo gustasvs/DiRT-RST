@@ -16,6 +16,8 @@ class VideoModel(nn.Module):
         super(VideoModel, self).__init__()
         # resnet = resnet18()
         efficientnet = efficientnet_v2_s()
+        print(efficientnet.features[0][0])
+        # efficientnet = efficientnet_b3()
         # print(resnet)
         if GRAYSCALE:
             # resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -28,11 +30,10 @@ class VideoModel(nn.Module):
         print(self.feature_dim)
         
         # LSTM to process sequential features from each frame
-        self.lstm = nn.LSTM(input_size=self.feature_dim, hidden_size=256, 
-                            num_layers=3, batch_first=True)
-        
+        self.lstm = nn.LSTM(input_size=self.feature_dim, hidden_size=128,
+                            num_layers=3, batch_first=True)        
         # Final classifier layer
-        self.classifier = nn.Linear(256, TARGET_CLASS_COUNT)
+        self.classifier = nn.Linear(128, TARGET_CLASS_COUNT)
 
 
     def forward(self, x):

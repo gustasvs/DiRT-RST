@@ -90,7 +90,7 @@ def main():
     paused = True
     print("Press 'T' to start and 'Y' to pause")
 
-    frames_to_average_fps = 20
+    frames_to_average_fps = 30
     average_fps = []    
     last_time = time.time() 
     pbar = tqdm(total=SAMPLES_IN_ONE_FILE)
@@ -134,7 +134,8 @@ def main():
             print('RESUMED', end=' ')
             countdown()
         if 'R' in keys:
-            training_data = undo_frames(training_data, file_index, 200, pbar)
+            training_data = undo_frames(training_data, file_index, 400, pbar)
+            paused = True
 
 if __name__ == "__main__":
     main()

@@ -8,15 +8,15 @@ SOURCE_HEIGHT = 768
 
 # the input to the model will be resized to this
 # factor of 4 (TODO: test this with efficientnet_b4) as its original input size is 380x380
-# MODEL_INPUT_WIDTH = 341
-# MODEL_INPUT_HEIGHT = 192
-# factor of 6
-MODEL_INPUT_WIDTH = 227
-MODEL_INPUT_HEIGHT = 128
+MODEL_INPUT_WIDTH = 341
+MODEL_INPUT_HEIGHT = 192
+# factor of 5
+# MODEL_INPUT_WIDTH = 273
+# MODEL_INPUT_HEIGHT = 154
 
 TARGET_CLASS_COUNT = 7
 
-file_name = 'greece_tsiristra_thea'
+file_name = 'greece_tsiristra_thea_2'
 t1 = 'sweden_hamra'
 t2 = 'wales_bronfelen'
 t3 = 'finland_kakaristo'
