@@ -32,17 +32,17 @@ def keys_to_output(keys):
     nk = [0,0,0,0,0,0,1]
     output = [0,0,0,0,0,0,0]
 
-    if 'W' in keys and 'A' in keys:
+    if 'W' in keys and 'A' in keys and not 'D' in keys:
         output = wa
-    elif 'W' in keys and 'D' in keys:
+    elif 'W' in keys and 'D' in keys and not 'A' in keys:
         output = wd
     elif 'W' in keys:
         output = w
     elif 'S' in keys:
         output = s
-    elif 'A' in keys:
+    elif 'A' in keys and not 'D' in keys:
         output = a
-    elif 'D' in keys:
+    elif 'D' in keys and not 'A' in keys:
         output = d
     else:
         output = nk
@@ -74,12 +74,14 @@ def undo_frames(training_data, file_index, frame_count, pbar):
             for i in range(len(previous_file_data) - frames_to_remove):
                 previous_file_data.pop()
             
-            np.save(previous_file_path, previous_file_data)
+            training_data = previous_file_data
+            os.remove(previous_file_path)
+            file_index -= 1
             print(f'Frames removed from {previous_file_path}')
         else:
             print(f'File {previous_file_path} not found')
 
-    return training_data
+    return training_data, file_index
 
 
 
@@ -88,7 +90,7 @@ def main():
 
     training_data = []
     paused = True
-    print("Press 'T' to start and 'Y' to pause")
+    print("Press 'Y' to start and 'T' to pause")
 
     frames_to_average_fps = 30
     average_fps = []    
@@ -133,8 +135,8 @@ def main():
             paused = False
             print('RESUMED', end=' ')
             countdown()
-        if 'R' in keys:
-            training_data = undo_frames(training_data, file_index, 400, pbar)
+        if 'R' in keys and not paused:
+            training_data, file_index = undo_frames(training_data, file_index, 300, pbar)
             paused = True
 
 if __name__ == "__main__":
