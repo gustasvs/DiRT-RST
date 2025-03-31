@@ -14,6 +14,10 @@ def get_next_file_index():
         os.makedirs(DATA_PATH.replace(DATA_PATH.split('/')[-1], ''))
     while os.path.isfile(f'{DATA_PATH}_{file_index}.npy'):
         file_index += 1
+
+    if file_index > 0:
+        print(f"Found existing files. Starting from {file_index}")
+    
     return file_index
 
 

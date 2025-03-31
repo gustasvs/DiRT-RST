@@ -1,5 +1,6 @@
 import os
 import torch
+import cv2
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
@@ -64,8 +65,6 @@ model.eval()
 # os._exit(0)
 
 losses = []
-
-import cv2
 
 def train_one_epoch(epoch_index, losses):
     running_loss = 0.0
