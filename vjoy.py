@@ -4,7 +4,7 @@ import ctypes
 import struct, time
 import numpy as np
 
-CONST_DLL_VJOY = "vJoyInterface.dll"
+CONST_DLL_VJOY = './vJoyInterface.dll'
 
 class vJoy(object):
     def __init__(self, reference = 1):
